@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>长征路线地图</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        #header { 
+            height: 60px; 
+            background: #8B0000; 
+            color: white; 
+            padding: 0 20px; 
+            display: flex; 
+            align-items: center; 
+        }
+        #container { 
+            flex: 1; 
+            display: flex; 
+        }
+        #mapView { 
+            flex: 3; 
+        }
+        #basemapPanel { 
+            width: 250px; 
+            background: #f5f5f5; 
+            padding: 15px; 
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        .basemap-btn { 
+            margin: 10px 0; 
+            padding: 10px; 
+            width: 100%;
+            background: white; 
+            border: 1px solid #ddd; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .basemap-btn:hover { 
+            background: #8B0000; 
+            color: white; 
+            transform: translateX(5px);
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.32/"></script>
+</head>
+<body>
+    <header id="header"><h1>长征路线地图</h1></header>
+    <div id="container">
+        <div id="mapView"></div>
+        <div id="basemapPanel">
+            <button class="basemap-btn" onclick="changeBasemap('streets-vector')">街道地图</button>
+            <button class="basemap-btn" onclick="changeBasemap('satellite')">卫星地图</button>
+            <button class="basemap-btn" onclick="changeBasemap('topo-vector')">地形图</button>
+            <button class="basemap-btn" onclick="changeBasemap('gray-vector')">灰度地图</button>
+            <button class="basemap-btn" onclick="changeBasemap('hybrid')">混合地图</button>
+        </div>
+    </div>
+
+<script>
+// 全局声明视图变量
+let view;
+
+require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/layers/FeatureLayer",
+    "esri/widgets/ScaleBar",
+    "esri/widgets/Legend",
+    "esri/widgets/Search",
+    "esri/widgets/LayerList"
+], (Map, MapView, FeatureLayer, ScaleBar, Legend, Search, LayerList) => {
+    
+    // 初始化地图
+    const map = new Map({ 
+        basemap: "streets-vector" // 默认底图
+    });
+
+    // 创建视图
+    view = new MapView({
+        container: "mapView",
+        map: map,
+        center: [106.92, 27.72], // 遵义会议坐标
+        zoom: 6
+    });
+
+    // 添加长征路线图层
+    const longMarchLayer = new FeatureLayer({
+        url: "https://www.geosceneonline.cn/server/rest/services/Hosted/长征路线图—089/FeatureServer",
+        renderer: {
+            type: "simple",
+            symbol: {
+                type: "simple-line",
+                color: [178, 34, 34, 0.8], // 深红色
+                width: 3
+            }
+        },
+        popupTemplate: {
+            title: "事件：{EVENT_NAME}",
+            content: [{
+                type: "fields",
+                fieldInfos: [
+                    { fieldName: "DATE", label: "发生时间" },
+                    { fieldName: "LOCATION", label: "发生地点" }
+                ]
+            }]
+        }
+    });
+    map.add(longMarchLayer);
+
+    // 添加比例尺
+    view.ui.add(new ScaleBar({
+        view: view,
+        unit: "metric"
+    }), "bottom-left");
+
+    // 添加图例
+    view.ui.add(new Legend({
+        view: view,
+        layerInfos: [{
+            layer: longMarchLayer,
+            title: "长征路线"
+        }]
+    }), "top-right");
+
+    // 添加搜索工具
+    view.ui.add(new Search({
+        view: view,
+        sources: [{
+            layer: longMarchLayer,
+            searchFields: ["EVENT_NAME"],
+            displayField: "EVENT_NAME",
+            placeholder: "搜索历史事件"
+        }]
+    }), "top-left");
+
+    // 添加图层列表
+    view.ui.add(new LayerList({
+        view: view
+    }), "top-right");
+});
+
+// 底图切换函数（直接使用有效ID）
+function changeBasemap(basemapId) {
+    if (view) {
+        // 有效basemap ID示例：
+        // "streets-vector" (街道图)
+        // "satellite" (卫星图)
+        // "hybrid" (混合图)
+        // "topo-vector" (地形图)
+        // "gray-vector" (灰度图)
+        view.map.basemap = basemapId;
+        
+        // 添加切换反馈（可选）
+        console.log("当前底图:", basemapId);
+        view.ui.add({
+            content: `已切换至 ${basemapId} 底图`,
+            position: "bottom-right",
+            style: "background:white;padding:8px;border:1px solid #ddd;"
+        }, "basemap-notice");
+        setTimeout(() => view.ui.remove("basemap-notice"), 2000);
+    }
+}
+</script>
+</body>
+</html>
