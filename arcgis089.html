@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>全球新冠疫情地图</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        #header { 
+            height: 60px; 
+            background: #B22222;  /* 改为警示红色 */
+            color: white; 
+            padding: 0 20px; 
+            display: flex; 
+            align-items: center; 
+        }
+        #container { 
+            flex: 1; 
+            display: flex; 
+        }
+        #mapView { 
+            flex: 3; 
+        }
+        #basemapPanel { 
+            width: 250px; 
+            background: #f5f5f5; 
+            padding: 15px; 
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        .basemap-btn { 
+            margin: 10px 0; 
+            padding: 10px; 
+            width: 100%;
+            background: white; 
+            border: 1px solid #ddd; 
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .basemap-btn:hover { 
+            background: #B22222;  /* 改为警示红色 */
+            color: white; 
+            transform: translateX(5px);
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.32/"></script>
+</head>
+<body>
+    <header id="header"><h1>全球新冠疫情实时分布</h1></header>
+    <div id="container">
+        <div id="mapView"></div>
+        <div id="basemapPanel">
+            <button class="basemap-btn" onclick="changeBasemap('streets-vector')">街道地图</button>
+            <button class="basemap-btn" onclick="changeBasemap('satellite')">卫星地图</button>
+            <button class="basemap-btn" onclick="changeBasemap('topo-vector')">地形图</button>
+            <button class="basemap-btn" onclick="changeBasemap('gray-vector')">灰度地图</button>
+            <button class="basemap-btn" onclick="changeBasemap('hybrid')">混合地图</button>
+        </div>
+    </div>
+
+<script>
+let view;
+
+require([
+    "esri/Map",
+    "esri/views/MapView",
+    "esri/layers/FeatureLayer",
+    "esri/widgets/ScaleBar",
+    "esri/widgets/Legend",
+    "esri/widgets/Search",
+    "esri/widgets/LayerList"
+], (Map, MapView, FeatureLayer, ScaleBar, Legend, Search, LayerList) => {
+    
+    const map = new Map({ 
+        basemap: "gray-vector" // 默认使用灰度底图
+    });
+
+    view = new MapView({
+        container: "mapView",
+        map: map,
+        center: [0, 20], // 全球中心视角
+        zoom: 2
+    });
+
+    // 新冠疫情数据层
+    const covidLayer = new FeatureLayer({
+        url: "https://www.geosceneonline.cn/server/rest/services/Hosted/新型冠状病毒疫情全球病例统计new/FeatureServer",
+        renderer: {
+            type: "simple",
+            symbol: {
+                type: "simple-marker",
+                color: [255, 0, 0, 0.7],  // 红色标记
+                size: 8,
+                outline: {
+                    color: [255, 255, 255],
+                    width: 1
+                }
+            }
+        },
+        popupTemplate: {
+            title: "国家/地区：{country}",
+            content: [{
+                type: "fields",
+                fieldInfos: [
+                    { fieldName: "confirmed", label: "确诊病例" },
+                    { fieldName: "deaths", label: "死亡病例" },
+                    { fieldName: "recovered", label: "治愈病例" },
+                    { fieldName: "last_update", label: "最后更新" }
+                ]
+            }]
+        }
+    });
+    map.add(covidLayer);
+
+    // 比例尺
+    view.ui.add(new ScaleBar({
+        view: view,
+        unit: "metric"
+    }), "bottom-left");
+
+    // 图例
+    view.ui.add(new Legend({
+        view: view,
+        layerInfos: [{
+            layer: covidLayer,
+            title: "疫情数据分布"
+        }]
+    }), "top-right");
+
+    // 搜索工具
+    view.ui.add(new Search({
+        view: view,
+        sources: [{
+            layer: covidLayer,
+            searchFields: ["country"],
+            displayField: "country",
+            placeholder: "搜索国家/地区"
+        }]
+    }), "top-left");
+
+    // 图层列表
+    view.ui.add(new LayerList({
+        view: view
+    }), "top-right");
+});
+
+function changeBasemap(basemapId) {
+    if (view) {
+        view.map.basemap = basemapId;
+        
+        // 切换反馈
+        console.log("当前底图:", basemapId);
+        view.ui.add({
+            content: `已切换至 ${basemapId} 底图`,
+            position: "bottom-right",
+            style: "background:white;padding:8px;border:1px solid #ddd;"
+        }, "basemap-notice");
+        setTimeout(() => view.ui.remove("basemap-notice"), 2000);
+    }
+}
+</script>
+</body>
+</html>
